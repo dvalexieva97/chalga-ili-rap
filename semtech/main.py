@@ -52,7 +52,7 @@ def download_album_dataset():
         f = urllib.request.urlopen(album_url)
         json_resp = f.read().decode('utf-8')
         data = json.loads(json_resp)
-        for i in data["videos"]:
+        for i in (data["videos"] + data["tracklist"]):
             i["artist"] = album["artist"]
             i["year"] = album["year"]
             i["album_name"] = album["album_name"]
@@ -68,9 +68,13 @@ def parse_album_dataset(filename):
         wr = csv.writer(open('final_album.csv', 'w'), quoting=csv.QUOTE_ALL)
         wr.writerow(('artist', 'album_name', 'title', 'year', 'uri', 'description', 'duration', 'label', 'genre'))
         for i in data:
+            if not i.get('uri'):
+                i['uri'] = ''
+            if not i.get('description'):
+                i['description'] = ''
             song = (i['artist'], i['album_name'], i['title'], i['year'], i['uri'], i['description'], i['duration'], 'facing the sun', 'hip-nop')
             wr.writerow(song)
 
-parse_dataset('all_songs.json')
-# parse_album_dataset('all_album_songs.json')
+# parse_dataset('all_songs.json')
+parse_album_dataset('all_album_songs.json')
 # download_album_dataset()
