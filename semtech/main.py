@@ -4,6 +4,7 @@ import urllib.request
 import urllib.parse
 import csv
 import discogs_client
+import time
 
 """
 Note: the dataset should be present. If for some reason it isn't you can run download_dataset
@@ -64,7 +65,6 @@ def download_album_dataset():
         print(json.dump(album_songs, outfile, ensure_ascii=False))
 
 def parse_album_dataset(filename):
-    parsed_songs = []
     with open(filename, encoding="utf-8") as json_file:
         data = json.load(json_file)
         print(len(data))
@@ -81,23 +81,27 @@ def parse_album_dataset(filename):
 
 def artists_dataset_from_label(label_name):
     d = discogs_client.Client('ExampleApplication/0.1', user_token="xOocILWvxqXCaDxPlsPZWIjzWPazATYBOlwEWrQK")
-    artists_list = []
+    artists_list = [] # if need to use again try and change it to "set()" to prevent duplicates
     results = d.search(label_name, type='label')
     for i in range(results[0].releases.count):
         artist_dict={}
         artist = results[0].releases[i].artists[0]
-        artist_dict['prefLabel'] = artist.name
-        artist_dict['Real Name'] = artist.real_name if artist.real_name is not None else ""
-        artist_dict['Description'] = artist.profile.strip() if artist.profile is not None else ""
-        artist_dict['Sites'] = artist.urls if artist.urls is not None else ""
-        artist_dict['altLabels'] = artist.name_variations if artist.name_variations is not None else ""
-        artist_dict['url'] = artist.url
+        # time.sleep(3) -- Uncomment if you have multiple requests else you will error out
+        try:
+            artist_dict['prefLabel'] = artist.name
+            artist_dict['Real Name'] = artist.real_name if artist.real_name is not None else ""
+            artist_dict['Description'] = artist.profile.strip() if artist.profile is not None else ""
+            artist_dict['Sites'] = artist.urls if artist.urls is not None else ""
+            artist_dict['altLabels'] = artist.name_variations if artist.name_variations is not None else ""
+            artist_dict['url'] = artist.url
+        except discogs_client.exceptions.HTTPError:
+            continue
+        print(artist_dict)
         artists_list.append(artist_dict)
-    with open('artists_from_label.json', 'w', encoding="utf-8") as outfile:
+    with open('artists_from_label_payner.json', 'w', encoding="utf-8") as outfile:
         json.dump(artists_list, outfile, indent=2, ensure_ascii=False)
 
 def parse_artists_dataset(filename):
-    parsed_artists = []
     with open(filename) as json_file:
         data = json.load(json_file)
         with open('artists.csv', 'w', encoding="utf-8") as outfile:
@@ -115,10 +119,21 @@ def parse_artists_dataset(filename):
                 artist = (i["prefLabel"], i["Real Name"], i["Description"], sites, alt_labels, i['url'])
                 wr.writerow(artist)
 
+def remove_dup():
+    lines_seen = set() # holds lines already seen
+    with open('artists.csv', 'r', encoding="utf-8") as infile:
+        with open('artists_payner.csv', 'w', encoding="utf-8") as outfile:
+            for line in infile.readlines():
+                line.replace("\n", "")
+                if line not in lines_seen:
+                    lines_seen.add(line)
+                    outfile.write(line)
 
 
+# artist_from_label_paynor.json has many duplicates realised this too late :( the csv file is cleaned up from them
 # download_album_dataset()
 # parse_dataset('all_songs.json')
 # parse_album_dataset('new_album.json')
-# artists_dataset_from_label('Facing The Sun')
-parse_artists_dataset('artists_from_label.json')
+# artists_dataset_from_label('Payner')
+# parse_artists_dataset('artists_from_label.json')
+# remove_dup()
